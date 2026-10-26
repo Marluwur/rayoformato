@@ -1,18 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://rayoprojects.com/</loc></url>
-  <url><loc>https://rayoprojects.com/pdf-a-word</loc></url>
-  <url><loc>https://rayoprojects.com/word-a-pdf</loc></url>
-  <url><loc>https://rayoprojects.com/excel-a-pdf</loc></url>
-  <url><loc>https://rayoprojects.com/imagenes-a-pdf</loc></url>
-  <url><loc>https://rayoprojects.com/pdf-a-imagenes</loc></url>
-  <url><loc>https://rayoprojects.com/webp-a-jpg</loc></url>
-  <url><loc>https://rayoprojects.com/png-a-jpg</loc></url>
-  <url><loc>https://rayoprojects.com/jpg-a-png</loc></url>
-  <url><loc>https://rayoprojects.com/video-a-mp3</loc></url>
-  <url><loc>https://rayoprojects.com/video-a-gif</loc></url>
-  <url><loc>https://rayoprojects.com/privacidad</loc></url>
-  <url><loc>https://rayoprojects.com/cookies</loc></url>
-  <url><loc>https://rayoprojects.com/contacto</loc></url>
-  <url><loc>https://rayoprojects.com/terminos</loc></url>
+  <url><loc>https://rayoprojects.com/</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/documentos</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/imagenes</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/audio-video</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/pdf-a-word</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/word-a-pdf</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/excel-a-pdf</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/imagenes-a-pdf</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/pdf-a-imagenes</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/webp-a-jpg</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/png-a-jpg</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/jpg-a-png</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/video-a-mp3</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/video-a-gif</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/privacidad</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/cookies</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/contacto</loc><lastmod>2026-10-25</lastmod></url>
+  <url><loc>https://rayoprojects.com/terminos</loc><lastmod>2026-10-25</lastmod></url>
 </urlset>
