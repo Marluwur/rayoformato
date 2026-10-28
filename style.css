@@ -124,3 +124,16 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:var(--mute);font-si
 .intro{color:var(--mute);margin:28px 0 0;max-width:62ch}
 .nf{text-align:center;padding:60px 0}.nf h1{font-size:clamp(36px,8vw,64px);font-weight:800}.nf p{color:var(--mute)}
 @media(max-width:720px){.why{grid-template-columns:1fr}}
+:root{--pdf:#8B5CF6}
+@media (prefers-color-scheme:dark){:root{--pdf:#B39BFF}}
+.pdf{--c:var(--pdf)}
+.mode.pdf .mi{color:var(--pdf)}
+.mode.pdf:has(input:checked){border-color:var(--pdf);box-shadow:0 0 0 1px var(--pdf)}
+.know p{color:var(--mute);max-width:62ch;margin:0 0 12px}
+input[type=text]{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+.ord{display:flex;gap:4px;margin-left:auto}
+.ord button{width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font:600 12px Figtree,sans-serif}
+.ord button:hover{border-color:var(--ink)}
+.cards{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.cards{grid-template-columns:1fr}}
