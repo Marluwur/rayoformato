@@ -1,0 +1,29 @@
+{
+  "name": "RayoFormato",
+  "short_name": "RayoFormato",
+  "lang": "es",
+  "description": "Convierte documentos, imágenes, audio y video gratis, en español y sin subir tus archivos.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0F1114",
+  "theme_color": "#0F1114",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

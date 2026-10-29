@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#FFD21F"/><path d="M18 5L8 18h7l-2 9 10-13h-7z" fill="#14171C" stroke="#14171C" stroke-width="1.5" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><style>@media (prefers-color-scheme: dark){#bg1{stop-color:#2C313A}#bg2{stop-color:#171A1F}#edge{stroke:#4A515D}}</style>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop id="bg1" offset="0" stop-color="#1C1F25"/><stop id="bg2" offset="1" stop-color="#08090B"/></linearGradient>
+<linearGradient id="doc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DCDFE4"/></linearGradient>
+<linearGradient id="arw" gradientUnits="userSpaceOnUse" x1="110" y1="140" x2="410" y2="460"><stop offset="0" stop-color="#FFD84A"/><stop offset=".55" stop-color="#FFB11F"/><stop offset="1" stop-color="#FF8A1A"/></linearGradient>
+<linearGradient id="blt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE766"/><stop offset="1" stop-color="#FFB300"/></linearGradient>
+</defs>
+<rect width="512" height="512" rx="112" fill="url(#bg)"/>
+<rect id="edge" x="6.0" y="6.0" width="500" height="500" rx="106.0" fill="none" stroke="#3A404A" stroke-width="12"/>
+<g><path d="M138,56 H290 L408,174 V422 Q408,456 374,456 H138 Q104,456 104,422 V90 Q104,56 138,56 Z" fill="url(#doc)"/>
+<path d="M290,56 V150.4 Q290,174 313.6,174 H408 Z" fill="#B9BEC6"/>
+
+<path d="M274.9,152.3 L174.1,290.9 L243.4,290.9 L224.5,391.7 L337.9,240.5 L268.6,240.5 Z" fill="url(#blt)" stroke="#0A0B0E" stroke-width="30" stroke-linejoin="round" paint-order="stroke"/></g>
+</svg>
