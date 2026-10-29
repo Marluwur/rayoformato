@@ -1,3 +1,21 @@
+/* Excel a PDF: limpia la hoja (filas y columnas vacias), separa titulos de una celda y notas finales */
+function xlClean(rows){
+ rows=rows.map(function(r){return (r||[]).map(function(c){return c==null?'':String(c).trim()})}).filter(function(r){return r.some(function(c){return c!==''})});
+ if(!rows.length)return null;
+ var nc=Math.max.apply(null,rows.map(function(r){return r.length})),keep=[];
+ for(var j=0;j<nc;j++)if(rows.some(function(r){return (r[j]||'')!==''}))keep.push(j);
+ rows=rows.map(function(r){return keep.map(function(j){return r[j]||''})});
+ var filled=function(r){return r.filter(function(c){return c!==''}).length},title=[],notes=[];
+ while(rows.length>1&&keep.length>1&&filled(rows[0])===1)title.push(rows.shift().join(' ').trim());
+ while(rows.length>1&&keep.length>1&&filled(rows[rows.length-1])===1&&rows[rows.length-1][0]!=='')notes.unshift(rows.pop()[0]);
+ return {title:title,head:rows[0],body:rows.slice(1),notes:notes}}
+function xlDraw(px,name,c){
+ var W=px.internal.pageSize.getWidth()-80,H=px.internal.pageSize.getHeight()-40,y=30;
+ px.setFontSize(12);px.text(name,40,y);
+ px.setFontSize(10);c.title.forEach(function(t){var ls=px.splitTextToSize(t,W);y+=16;px.text(ls,40,y);y+=(ls.length-1)*12});
+ px.autoTable({head:[c.head],body:c.body,startY:y+12,styles:{fontSize:8},margin:{left:40,right:40}});
+ if(c.notes.length){var ny=(px.lastAutoTable&&px.lastAutoTable.finalY?px.lastAutoTable.finalY:y+40)+18;px.setFontSize(8);
+  c.notes.forEach(function(t){var ls=px.splitTextToSize(t,W);if(ny+ls.length*11>H){px.addPage();ny=40}px.text(ls,40,ny);ny+=ls.length*11+4})}}
 
 /* PDF a Word: reconstruye parrafos y titulos a partir del texto del PDF */
 async function pdfToHtml(doc){
@@ -86,7 +104,8 @@ dG.onclick=async function(){
     var pd=new jspdf.jsPDF({unit:'pt',format:'a4'});await new Promise(function(res){pd.html(el,{width:515,windowWidth:515,margin:[40,40,40,40],callback:res})});el.remove();addOut(dO,pd.output('blob'),base(f3)+'.pdf')}
   }else if(m==='xlsx'){
    for(var f4 of files){var wb=XLSX.read(await f4.arrayBuffer()),px=new jspdf.jsPDF({unit:'pt',format:'a4',orientation:'landscape'}),first=true;
-    wb.SheetNames.forEach(function(n){var rows=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:''});if(!rows.length)return;if(!first)px.addPage();first=false;px.setFontSize(12);px.text(n,40,30);px.autoTable({head:[rows[0]],body:rows.slice(1),startY:40,styles:{fontSize:8},margin:{left:40,right:40}})});
+    wb.SheetNames.forEach(function(n){var rows=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:''});if(!rows.length)return;var c=xlClean(rows);if(!c)return;if(!first)px.addPage();first=false;
+     try{xlDraw(px,n,c)}catch(e){px.setFontSize(12);px.text(n,40,30);px.autoTable({head:[rows[0]],body:rows.slice(1),startY:40,styles:{fontSize:8},margin:{left:40,right:40}})}});
     addOut(dO,px.output('blob'),base(f4)+'.pdf')}
   }else if(m==='img2docx'){
    var bl=[];for(var k2=0;k2<files.length;k2++)bl.push(await imgBlock(files[k2]));

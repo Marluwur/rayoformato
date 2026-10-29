@@ -120,6 +120,12 @@ function parse(str,n){var res=[],toks=String(str).split(/[,;]+/).map(function(t)
   if(a<1||b>n||a>b)throw new Error('el rango «'+t+'» no es válido: en este paso el PDF tiene '+n+' páginas.');
   for(var p=a;p<=b;p++)res.push(p-1)});
  return res}
+/* Vista de una pagina tal como se ve en pantalla: respeta el giro guardado en el PDF (/Rotate).
+   w,h = ancho y alto visibles; at(x,y) = punto visible -> coordenadas internas; margins = margenes visibles -> internos */
+function pview(pg){var mb=pg.getMediaBox(),r=((pg.getRotation().angle%360)+360)%360,W=mb.width,H=mb.height,s=(r===90||r===270);
+ return {r:r,w:s?H:W,h:s?W:H,W:W,H:H,mb:mb,
+  at:function(dx,dy){var x=dx,y=dy;if(r===90){x=W-dy;y=dx}else if(r===180){x=W-dx;y=H-dy}else if(r===270){x=dy;y=H-dx}return {x:mb.x+x,y:mb.y+y}},
+  margins:function(t,rt,b,l){return r===90?[rt,b,l,t]:r===180?[b,l,t,rt]:r===270?[l,t,rt,b]:[t,rt,b,l]}}}
 function sel(doc,txt){var n=doc.getPageCount();return String(txt||'').trim()?parse(txt,n):doc.getPageIndices()}
 async function copyDoc(doc,idx){var d=await PDFLib.PDFDocument.create();(await d.copyPages(doc,idx)).forEach(function(p){d.addPage(p)});return d}
 async function loadPdf(f){try{return await PDFLib.PDFDocument.load(await f.arrayBuffer())}catch(e){throw new Error(f.name+': '+(/encrypt/i.test(e.message)?'está protegido con contraseña.':'no es un PDF válido o está dañado.'))}}
@@ -133,22 +139,23 @@ async function apply(doc,s,notes){
  case 'number':
   var st=parseInt(o.start,10);if(!(st>=0))throw new Error('el número inicial debe ser 0 o mayor.');
   var font=await doc.embedFont(PL.StandardFonts.Helvetica);
-  sel(doc,o.pages).forEach(function(i){var pg=doc.getPage(i),sz=pg.getSize(),num=st+i,t=o.fmt==='n'?String(num):o.fmt==='p'?'Página '+num:'Página '+num+' de '+(st+n-1),w=font.widthOfTextAtSize(t,10),c=o.pos.charAt(1),x=c==='l'?36:c==='r'?sz.width-36-w:(sz.width-w)/2,y=o.pos.charAt(0)==='t'?sz.height-30:22;
-   pg.drawText(t,{x:x,y:y,size:10,font:font,color:PL.rgb(0.2,0.2,0.2)})});
+  sel(doc,o.pages).forEach(function(i){var pg=doc.getPage(i),v=pview(pg),num=st+i,t=o.fmt==='n'?String(num):o.fmt==='p'?'Página '+num:'Página '+num+' de '+(st+n-1),w=font.widthOfTextAtSize(t,10),c=o.pos.charAt(1),x=c==='l'?36:c==='r'?v.w-36-w:(v.w-w)/2,y=o.pos.charAt(0)==='t'?v.h-30:22,q=v.at(x,y);
+   var bq=v.at(x-4,y-4);pg.drawRectangle({x:bq.x,y:bq.y,width:w+8,height:15,color:PL.rgb(1,1,1),opacity:0.85,rotate:PL.degrees(v.r)});
+   pg.drawText(t,{x:q.x,y:q.y,size:10,font:font,color:PL.rgb(0.2,0.2,0.2),rotate:PL.degrees(v.r)})});
   return doc;
  case 'watermark':
   var tx=String(o.text||'').trim();if(!tx)throw new Error('escribe el texto de la marca de agua.');
   var wf=await doc.embedFont(PL.StandardFonts.HelveticaBold),op=+o.op,ang=+o.ang,w1;
   try{w1=wf.widthOfTextAtSize(tx,1)}catch(e){throw new Error('la marca de agua solo admite letras latinas (con acentos), números y signos comunes.')}
-  sel(doc,o.pages).forEach(function(i){var pg=doc.getPage(i),sz=pg.getSize(),L=ang?Math.hypot(sz.width,sz.height)*0.62:sz.width*0.8,fs=Math.min(L/w1,140),tw=w1*fs,th=fs*0.7,r=ang*Math.PI/180,cx=sz.width/2,cy=sz.height/2,
-   x=cx-(tw/2)*Math.cos(r)+(th/2)*Math.sin(r),y=cy-(tw/2)*Math.sin(r)-(th/2)*Math.cos(r);
-   pg.drawText(tx,{x:x,y:y,size:fs,font:wf,color:PL.rgb(0.45,0.45,0.45),opacity:op,rotate:PL.degrees(ang)})});
+  sel(doc,o.pages).forEach(function(i){var pg=doc.getPage(i),v=pview(pg),L=ang?Math.hypot(v.w,v.h)*0.62:v.w*0.8,fs=Math.min(L/w1,140),tw=w1*fs,th=fs*0.7,r=ang*Math.PI/180,cx=v.w/2,cy=v.h/2,
+   q=v.at(cx-(tw/2)*Math.cos(r)+(th/2)*Math.sin(r),cy-(tw/2)*Math.sin(r)-(th/2)*Math.cos(r));
+   pg.drawText(tx,{x:q.x,y:q.y,size:fs,font:wf,color:PL.rgb(0.45,0.45,0.45),opacity:op,rotate:PL.degrees(ang+v.r)})});
   return doc;
  case 'crop':
   var mg=['t','r','b','l'].map(function(k){var v=parseFloat(String(o[k]).replace(',','.'));if(!(v>=0))throw new Error('los márgenes deben ser números de 0 o más (en milímetros).');return v*2.834645});
-  sel(doc,o.pages).forEach(function(i){var pg=doc.getPage(i),sz=pg.getSize();
-   if(mg[3]+mg[1]>=sz.width-20||mg[0]+mg[2]>=sz.height-20)throw new Error('esos márgenes son demasiado grandes para la página '+(i+1)+'.');
-   pg.setCropBox(mg[3],mg[2],sz.width-mg[3]-mg[1],sz.height-mg[0]-mg[2]);pg.setMediaBox(mg[3],mg[2],sz.width-mg[3]-mg[1],sz.height-mg[0]-mg[2])});
+  sel(doc,o.pages).forEach(function(i){var pg=doc.getPage(i),v=pview(pg),q=v.margins(mg[0],mg[1],mg[2],mg[3]),W=v.W,H=v.H;
+   if(q[3]+q[1]>=W-20||q[0]+q[2]>=H-20)throw new Error('esos márgenes son demasiado grandes para la página '+(i+1)+'.');
+   pg.setCropBox(v.mb.x+q[3],v.mb.y+q[2],W-q[3]-q[1],H-q[0]-q[2]);pg.setMediaBox(v.mb.x+q[3],v.mb.y+q[2],W-q[3]-q[1],H-q[0]-q[2])});
   notes.crop=1;return doc;
  case 'compress':
   if(o.lv!=='strong')return doc;
