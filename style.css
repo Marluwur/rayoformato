@@ -234,3 +234,15 @@ input[type=text]:focus,input[type=email]:focus,select:focus,textarea:focus{borde
 .wfp .tag{background:linear-gradient(90deg,var(--accent),var(--accent-2))}
 @media(max-width:720px){.top .ico{width:52px;height:52px;padding:10px;border-radius:13px}}
 @media (prefers-reduced-motion:reduce){.card,.btn{transition:none}.card:hover{transform:none}}
+
+/* v5: iconos propios por herramienta (sprite /icons.svg) */
+.mode .mi{color:var(--c)}
+.conv-h{display:flex;align-items:center;gap:16px}
+.conv-h h1{margin:0}
+.tico{flex:none;width:60px;height:60px;border-radius:16px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent)}
+.tico svg{width:36px;height:36px}
+.li-ic{width:16px;height:16px;flex:none;color:var(--c,var(--mute));opacity:.9}
+.dir li a,.rel li a{display:inline-flex;align-items:center;gap:7px}
+.dir li{margin:6px 0}
+.rel{display:block}
+@media(max-width:720px){.tico{width:48px;height:48px;border-radius:13px}.tico svg{width:28px;height:28px}.conv-h{gap:12px}}
