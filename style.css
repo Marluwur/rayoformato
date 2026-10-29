@@ -137,3 +137,17 @@ input[type=text]{width:100%;padding:10px 12px;border-radius:8px;border:1px solid
 .cards{grid-template-columns:repeat(4,1fr)}
 @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:720px){.cards{grid-template-columns:1fr}}
+input[type=email]{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+.rp-btn{background:none;border:0;padding:0;font:inherit;color:var(--mute);cursor:pointer;text-decoration:underline}
+.rp-btn:hover{color:var(--ink)}
+dialog#rp-dlg{border:1px solid var(--line);border-radius:16px;padding:22px;background:var(--surface);color:var(--ink);max-width:460px;width:calc(100% - 32px)}
+dialog#rp-dlg::backdrop{background:rgba(0,0,0,.55)}
+#rp-dlg h2{font-size:22px;margin:0 0 6px}
+#rp-dlg p{color:var(--mute);margin:0 0 14px;font-size:15px}
+#rp-dlg label{display:grid;gap:4px;font-weight:600;font-size:14px;margin-bottom:12px}
+#rp-dlg textarea{font:inherit;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical;width:100%}
+#rp-dlg #rp-st{min-height:1.4em;margin:6px 0}
+.rp-act{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+.rp-act button:not(.btn){background:none;border:1px solid var(--line);border-radius:10px;padding:12px 18px;font:600 16px Figtree,sans-serif;color:var(--ink);cursor:pointer}
+#rp-dlg small{display:block;margin-top:12px;color:var(--mute)}
+#rp-dlg small a{color:var(--ink)}
