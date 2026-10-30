@@ -1,5 +1,5 @@
 /* Carga de librerias bajo demanda */
-var LIBS={jspdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',autotable:'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',html2canvas:'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',pdfjs:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',mammoth:'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',tesseract:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',lame:'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js',jszip:'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',pdflib:'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'};
+var LIBS={jspdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',autotable:'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',html2canvas:'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',pdfjs:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',mammoth:'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',tesseract:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',lame:'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js',jszip:'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',pdflib:'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',heic:'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js'};
 var _lp={};
 function need(k){return _lp[k]||(_lp[k]=new Promise(function(res,rej){var s=document.createElement('script');s.src=LIBS[k];s.onload=res;s.onerror=function(){delete _lp[k];rej(new Error('No se pudo cargar '+k))};document.head.appendChild(s)}))}
 /* Utilidades comunes */
@@ -44,3 +44,27 @@ function addOut(ul,blob,name,orig){var li=document.createElement('li'),s=documen
 function base(f){return f.name.replace(/\.[^.]+$/,'')}
 function readImg(f){return new Promise(function(res,rej){var i=new Image();i.onload=function(){res(i)};i.onerror=rej;i.src=URL.createObjectURL(f)})}
 function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+/* Fotos HEIC/HEIF (iPhone): Safari las abre solo; en los demas navegadores se pasan a JPG con heic2any */
+function isHeic(f){return /hei[cf]/i.test(f.type||'')||/\.hei[cf]$/i.test(f.name||'')}
+function isImg(f){return (f.type||'').indexOf('image/')===0||isHeic(f)}
+async function decodable(f){
+ if(!isHeic(f))return f;if(f._dec)return f._dec;
+ try{await new Promise(function(res,rej){var i=new Image();i.onload=res;i.onerror=rej;i.src=URL.createObjectURL(f)});return f._dec=f}catch(e){}
+ try{await need('heic');var r=await heic2any({blob:f,toType:'image/jpeg',quality:0.95});r=Array.isArray(r)?r[0]:r;
+  var o=new File([r],f.name.replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});return f._dec=o}
+ catch(e){throw new Error(f.name+': no se pudo abrir la foto HEIC.')}}
+/* Codifica un canvas sin pasar de max bytes: primero baja la calidad y, si no alcanza, reduce las medidas */
+function cBlob(c,t,q){return new Promise(function(r){c.toBlob(r,t,q)})}
+async function fitBlob(c,type,max,minQ,maxQ){
+ var cur=c,last=null;minQ=minQ||0.4;maxQ=maxQ||0.95;
+ for(var round=0;round<8;round++){
+  var hi=await cBlob(cur,type,maxQ);if(hi.size<=max)return {b:hi,c:cur,q:maxQ};
+  var lo=await cBlob(cur,type,minQ);last={b:lo,c:cur,q:minQ};
+  if(lo.size<=max){var a=minQ,z=maxQ,best=last;
+   for(var k=0;k<7;k++){var m=(a+z)/2,b=await cBlob(cur,type,m);if(b.size<=max){best={b:b,c:cur,q:m};a=m}else z=m}
+   return best}
+  var f=Math.max(0.3,Math.min(0.92,Math.sqrt(max/lo.size)*0.97)),n=document.createElement('canvas');
+  n.width=Math.max(1,Math.round(cur.width*f));n.height=Math.max(1,Math.round(cur.height*f));
+  var x=n.getContext('2d');if(type==='image/jpeg'){x.fillStyle='#fff';x.fillRect(0,0,n.width,n.height)}x.imageSmoothingQuality='high';x.drawImage(cur,0,0,n.width,n.height);cur=n}
+ return last}

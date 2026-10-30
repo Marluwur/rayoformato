@@ -45,12 +45,8 @@ function readOrder(ss,X0,W){
  function flush(){buf.filter(function(s){return s.x1<=g+2}).sort(byTop).concat(buf.filter(function(s){return s.x1>g+2}).sort(byTop)).forEach(function(s){out.push(s)});buf=[]}
  ss.slice().sort(byTop).forEach(function(s){if(s.x0<g-2&&s.x1>g+2){flush();out.push(s)}else buf.push(s)});
  flush();return out}
-async function pdfToBlocks(doc,onPage){
- var pages=[],cnt={},chars=0,O=pdfjsLib.OPS;
- for(var q=1;q<=doc.numPages;q++){
-  if(onPage)onPage(q,doc.numPages);
-  var pg=await doc.getPage(q),vw=pg.view,X0=vw[0],Y0=vw[1],W=vw[2]-vw[0],H=vw[3]-vw[1];
-  var ol=await pg.getOperatorList(),tc=await pg.getTextContent(),fb={};
+/* Texto de una pagina agrupado en lineas y tramos (celdas); llamar despues de getOperatorList para conocer las negritas */
+function pdfSegs(pg,tc,gap){var fb={};gap=gap||2;
   var isBold=function(fn){if(fn in fb)return fb[fn];var b=false;try{var f=pg.commonObjs.get(fn);b=!!(f&&(f.bold||/bold|black|heavy|semibold|demi/i.test(f.name||'')))}catch(e){}return fb[fn]=b};
   var its=tc.items.filter(function(it){return it.str&&it.str.trim()}).map(function(it){var t=it.transform,s=Math.hypot(t[2],t[3])||it.height||10;return {x:t[4],y:t[5],w:it.width||0,s:s,t:it.str,b:isBold(it.fontName)}});
   its.sort(function(a,b){return b.y-a.y});
@@ -59,10 +55,17 @@ async function pdfToBlocks(doc,onPage){
   var segs=[];
   lines.forEach(function(l){l.items.sort(function(a,b){return a.x-b.x});var sg=null;
    l.items.forEach(function(it){
-    if(sg&&it.x-sg.x1<=it.s*2){var sp=(it.x-sg.x1>it.s*0.15&&!/\s$/.test(sg.t)&&!/^\s/.test(it.t))?' ':'';sg.t+=sp+it.t;sg.x1=Math.max(sg.x1,it.x+it.w);if(it.s>sg.s)sg.s=it.s;if(it.b)sg.nb+=it.t.length;sg.nt+=it.t.length}
+    if(sg&&it.x-sg.x1<=it.s*gap){var sp=(it.x-sg.x1>it.s*0.15&&!/\s$/.test(sg.t)&&!/^\s/.test(it.t))?' ':'';sg.t+=sp+it.t;sg.x1=Math.max(sg.x1,it.x+it.w);if(it.s>sg.s)sg.s=it.s;if(it.b)sg.nb+=it.t.length;sg.nt+=it.t.length}
     else{sg={y:l.y,x0:it.x,x1:it.x+it.w,s:it.s,t:it.t,nb:it.b?it.t.length:0,nt:it.t.length};segs.push(sg)}})});
-  segs=segs.filter(function(s){s.t=s.t.replace(/\s+/g,' ').trim();s.b=s.nb>=s.nt*0.6;s.top=s.y+s.s*0.8;
-   var k=Math.round(s.s*2)/2;if(s.t){chars+=s.t.length;if(!s.b)cnt[k]=(cnt[k]||0)+s.t.length}return !!s.t});
+  return segs.filter(function(s){s.t=s.t.replace(/\s+/g,' ').trim();s.b=s.nb>=s.nt*0.6;s.top=s.y+s.s*0.8;return !!s.t})}
+async function pdfToBlocks(doc,onPage){
+ var pages=[],cnt={},chars=0,O=pdfjsLib.OPS;
+ for(var q=1;q<=doc.numPages;q++){
+  if(onPage)onPage(q,doc.numPages);
+  var pg=await doc.getPage(q),vw=pg.view,X0=vw[0],Y0=vw[1],W=vw[2]-vw[0],H=vw[3]-vw[1];
+  var ol=await pg.getOperatorList(),tc=await pg.getTextContent();
+  var segs=pdfSegs(pg,tc);
+  segs.forEach(function(s){var k=Math.round(s.s*2)/2;chars+=s.t.length;if(!s.b)cnt[k]=(cnt[k]||0)+s.t.length});
   var ctm=[1,0,0,1,0,0],st=[],imgs=[];
   for(var i=0;i<ol.fnArray.length;i++){var f=ol.fnArray[i],a=ol.argsArray[i];
    if(f===O.save)st.push(ctm.slice());else if(f===O.restore)ctm=st.pop()||ctm;else if(f===O.transform)ctm=pdfMul(ctm,a);
@@ -95,6 +98,43 @@ async function pdfToBlocks(doc,onPage){
   if(blocks[i].pb&&A&&Bk&&A.p&&Bk.p&&!A.h&&!Bk.h&&!A.tabs&&!Bk.tabs&&A.b===Bk.b&&!/[.:;?!)\]"\u00bb]$/.test(A.p)&&/^[a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1\u00fc]/.test(Bk.p)){
    A.p=/-$/.test(A.p)?A.p.slice(0,-1)+Bk.p:A.p+' '+Bk.p;blocks.splice(i,2)}}
  return blocks}
+/* PDF a Excel: una hoja por pagina; las columnas salen de los huecos verticales comunes entre celdas */
+function xlNum(t){var m=t.replace(/\s/g,''),neg=/^\(.*\)$/.test(m);if(neg)m=m.slice(1,-1);m=m.replace(/^(-?)\$/,'$1');
+ if(/^-?0\d/.test(m)||m.replace(/\D/g,'').length>15)return null;var v=null;
+ if(/^-?\d+(\.\d+)?$/.test(m))v=+m;
+ else if(/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(m))v=+m.replace(/,/g,'');
+ else if(/^-?\d{1,3}(\.\d{3})+,\d+$/.test(m))v=+m.replace(/\./g,'').replace(',','.');
+ else if(/^-?\d+,\d{1,2}$/.test(m)||/^-?\d+,\d{4,}$/.test(m))v=+m.replace(',','.');
+ return v===null||isNaN(v)?null:(neg?-v:v)}
+function pageGrid(segs){
+ var rows=[],cur=null;segs.slice().sort(function(a,b){return (b.y-a.y)||(a.x0-b.x0)}).forEach(function(s){if(cur&&Math.abs(cur.y-s.y)<=Math.max(2,s.s*0.35))cur.c.push(s);else{cur={y:s.y,c:[s]};rows.push(cur)}});
+ /* las columnas se miden en las filas con mas celdas (las de la tabla); asi un pie de pagina largo no junta dos columnas */
+ var mx=Math.max.apply(null,rows.map(function(r){return r.c.length})),need=mx>=3?3:2,iv=[];rows.forEach(function(r){if(r.c.length>=need)r.c.forEach(function(s){iv.push([s.x0,s.x1])})});
+ iv.sort(function(a,b){return a[0]-b[0]});var bands=[];
+ iv.forEach(function(v){var l=bands[bands.length-1];if(l&&v[0]<=l[1]+2)l[1]=Math.max(l[1],v[1]);else bands.push([v[0],v[1]])});
+ if(!bands.length)bands=[[-1e9,1e9]];
+ function col(s){var c=(s.x0+s.x1)/2,best=0,bd=1e9;for(var i=0;i<bands.length;i++){var b=bands[i];if(c>=b[0]-2&&c<=b[1]+2)return i;var d=Math.min(Math.abs(c-b[0]),Math.abs(c-b[1]));if(d<bd){bd=d;best=i}}return best}
+ return rows.map(function(r){var out=[];r.c.sort(function(a,b){return a.x0-b.x0}).forEach(function(s){var i=r.c.length>1?col(s):0;if(out[i]){out[i].v+=' '+s.t}else out[i]={v:s.t,b:s.b}});
+  for(var i=0;i<out.length;i++){if(!out[i])continue;var n=xlNum(out[i].v);if(n!==null){out[i].n=n}}return out})}
+function xcol(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s}
+function buildXlsx(sheets){
+ var Z=new JSZip(),H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',wb='',rel='',ct='';
+ sheets.forEach(function(sh,k){var n=k+1,w=[],xml='';
+  sh.rows.forEach(function(r,ri){var cells='';r.forEach(function(c,ci){if(!c)return;var ref=xcol(ci)+(ri+1),st=c.b?' s="1"':'';
+    w[ci]=Math.max(w[ci]||0,String(c.v).length);
+    cells+=c.n!==undefined?'<c r="'+ref+'"'+st+'><v>'+c.n+'</v></c>':'<c r="'+ref+'" t="inlineStr"'+st+'><is><t xml:space="preserve">'+xesc(c.v)+'</t></is></c>'});
+   xml+='<row r="'+(ri+1)+'">'+cells+'</row>'});
+  var cols='';for(var i=0;i<w.length;i++)cols+='<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+Math.min(60,Math.max(8,Math.round((w[i]||6)*1.1+2)))+'" customWidth="1"/>';
+  Z.file('xl/worksheets/sheet'+n+'.xml',H+'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+(cols?'<cols>'+cols+'</cols>':'')+'<sheetData>'+xml+'</sheetData></worksheet>');
+  wb+='<sheet name="'+xesc(sh.name.replace(/[\\\/?*\[\]:]/g,' ').slice(0,31))+'" sheetId="'+n+'" r:id="rId'+n+'"/>';
+  rel+='<Relationship Id="rId'+n+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+n+'.xml"/>';
+  ct+='<Override PartName="/xl/worksheets/sheet'+n+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'});
+ Z.file('[Content_Types].xml',H+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+ct+'</Types>');
+ Z.file('_rels/.rels',H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+ Z.file('xl/workbook.xml',H+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+wb+'</sheets></workbook>');
+ Z.file('xl/_rels/workbook.xml.rels',H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+rel+'<Relationship Id="rIdS" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
+ Z.file('xl/styles.xml',H+'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>');
+ return Z.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
 /* OCR: une las lineas de cada parrafo, quita guiones de corte y descarta lineas sin texto real (logos, sellos) */
 function ocrParas(text){
  var NL=String.fromCharCode(10);
@@ -133,7 +173,7 @@ function buildDocx(blocks){
  return Z.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'})}
 /* Documentos: imágenes a PDF, TXT a PDF, PDF a imágenes */
 var dF=document.getElementById('d-file'),dM={get value(){return document.querySelector('input[name=dmode]:checked').value}},dG=document.getElementById('d-go'),dO=document.getElementById('d-out'),dH=document.getElementById('d-hint');
-var dInfo={img:['image/*','Imágenes JPG, PNG o WebP'],txt:['.txt,text/plain','Archivos de texto (.txt)'],pdf:['application/pdf','Archivo PDF (se convierten hasta 20 páginas)'],docx:['.docx','Documento de Word (.docx)'],xlsx:['.xlsx,.xls,.csv','Hoja de Excel (.xlsx, .xls o .csv)'],pdfdoc:['application/pdf','PDF con texto seleccionable (se conservan texto, t\u00edtulos, negritas e im\u00e1genes)'],ocr:['application/pdf','PDF escaneado o fotografiado (hasta 10 páginas)'],img2docx:['image/*','Imágenes JPG, PNG o WebP'],pdfjpg:['application/pdf','PDF (se convierten hasta 20 páginas)'],ocrdocx:['image/*','Foto o captura con texto (JPG, PNG o WebP)']};
+var dInfo={img:['image/*','Imágenes JPG, PNG o WebP'],txt:['.txt,text/plain','Archivos de texto (.txt)'],pdf:['application/pdf','Archivo PDF (se convierten hasta 20 páginas)'],docx:['.docx','Documento de Word (.docx)'],xlsx:['.xlsx,.xls,.csv','Hoja de Excel (.xlsx, .xls o .csv)'],pdfdoc:['application/pdf','PDF con texto seleccionable (se conservan texto, t\u00edtulos, negritas e im\u00e1genes)'],ocr:['application/pdf','PDF escaneado o fotografiado (hasta 10 páginas)'],img2docx:['image/*','Imágenes JPG, PNG o WebP'],pdfjpg:['application/pdf','PDF (se convierten hasta 20 páginas)'],pdfxls:['application/pdf','PDF con texto seleccionable: cada página pasa a una hoja de Excel'],ocrdocx:['image/*','Foto o captura con texto (JPG, PNG o WebP)']};
 var mb=document.getElementById('d-more');mb.onclick=function(){var o=document.getElementById('d-modes').classList.toggle('more');mb.textContent=o?'Mostrar menos':'Mostrar más';mb.setAttribute('aria-expanded',o)};
 document.getElementById('d-modes').onchange=function(){var i=dInfo[dM.value];dF.accept=i[0];dH.textContent=i[1];dF.value='';dG.disabled=true;dO.innerHTML=''};
 dF.onchange=function(){dG.disabled=!dF.files.length;ready(dO,dF.files)};
@@ -141,7 +181,7 @@ dG.onclick=async function(){
  dO.innerHTML='';dG.disabled=true;var files=Array.from(dF.files),m=dM.value;if(m==='ocr'||m==='ocrdocx'||m==='docx'||files.some(function(f){return f.size>20971520}))gameOn(dO);
  try{
   msg(dO,'Preparando el convertidor…');var prep=dO.lastChild;
-  var NEED={pdfjpg:['pdfjs'],img2docx:['jszip'],ocrdocx:['jszip','tesseract'],img:['jspdf'],txt:['jspdf'],pdf:['pdfjs'],docx:['jspdf','html2canvas','mammoth'],xlsx:['jspdf','autotable','xlsx'],pdfdoc:['pdfjs','jszip'],ocr:['pdfjs','tesseract','jszip']};
+  var NEED={pdfjpg:['pdfjs'],img2docx:['jszip'],ocrdocx:['jszip','tesseract'],img:['jspdf'],txt:['jspdf'],pdf:['pdfjs'],docx:['jspdf','html2canvas','mammoth'],xlsx:['jspdf','autotable','xlsx'],pdfdoc:['pdfjs','jszip'],ocr:['pdfjs','tesseract','jszip'],pdfxls:['pdfjs','jszip']};
   for(var ni=0;ni<NEED[m].length;ni++)await need(NEED[m][ni]);
   prep.remove();
   if(m==='img'){
@@ -156,7 +196,8 @@ dG.onclick=async function(){
    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
    for(var f2 of files){var doc=await pdfjsLib.getDocument({data:await f2.arrayBuffer()}).promise,n=Math.min(doc.numPages,20);
     for(var i=1;i<=n;i++){var pg=await doc.getPage(i),vp=pg.getViewport({scale:1.5}),cv=document.createElement('canvas');cv.width=vp.width;cv.height=vp.height;var cx2=cv.getContext('2d');cx2.fillStyle='#fff';cx2.fillRect(0,0,cv.width,cv.height);await pg.render({canvasContext:cx2,viewport:vp}).promise;
-     var b=await new Promise(function(r2){cv.toBlob(r2,jp?'image/jpeg':'image/png',0.92)});addOut(dO,b,base(f2)+'-pagina-'+i+(jp?'.jpg':'.png'))}}
+     var b=await new Promise(function(r2){cv.toBlob(r2,jp?'image/jpeg':'image/png',0.92)});addOut(dO,b,base(f2)+'-pagina-'+i+(jp?'.jpg':'.png'))}
+    if(doc.numPages>n)msg(dO,'Se convirtieron las primeras '+n+' de '+doc.numPages+' p\u00e1ginas de '+f2.name+'. Para el resto, separa el PDF con \u00abDividir PDF\u00bb y convierte cada parte.')}
   }else if(m==='docx'){
    for(var f3 of files){var hh=(await mammoth.convertToHtml({arrayBuffer:await f3.arrayBuffer()})).value,el=document.createElement('div');el.style.cssText='width:515px;font:14px/1.4 Arial,sans-serif;color:#000;background:#fff';el.innerHTML='<style>table{border-collapse:collapse}td,th{border:1px solid #999;padding:3px}img{max-width:100%}</style>'+hh;
     var pd=new jspdf.jsPDF({unit:'pt',format:'a4'});await new Promise(function(res){pd.html(el,{width:515,windowWidth:515,margin:[40,40,40,40],autoPaging:'text',callback:res})});addOut(dO,pd.output('blob'),base(f3)+'.pdf')}
@@ -184,8 +225,19 @@ dG.onclick=async function(){
      var pg7=await d7.getPage(q7),vp7=pg7.getViewport({scale:2}),cv7=document.createElement('canvas');cv7.width=vp7.width;cv7.height=vp7.height;await pg7.render({canvasContext:cv7.getContext('2d'),viewport:vp7}).promise;
      var rr=await wk.recognize(cv7);if(q7>1)ob.push({pb:true});ocrParas(rr.data.text).forEach(function(t){ob.push({p:t})});row2.remove()}
     if(!ob.some(function(x){return x.p})){msg(dO,f7.name+': no se encontr\u00f3 texto legible.');continue}
-    addOut(dO,await buildDocx(ob),base(f7)+'-ocr.docx')}
+    addOut(dO,await buildDocx(ob),base(f7)+'-ocr.docx');
+    if(d7.numPages>n7)msg(dO,'Se leyeron las primeras '+n7+' de '+d7.numPages+' p\u00e1ginas de '+f7.name+'. Para el resto, separa el PDF con \u00abDividir PDF\u00bb y vuelve a usar el OCR.')}
    await wk.terminate();
+  }else if(m==='pdfxls'){
+   pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+   for(var f9 of files){var d9=await pdfjsLib.getDocument({data:await f9.arrayBuffer()}).promise,sh=[],any=false;
+    msg(dO,'Leyendo '+f9.name+'\u2026');var row9=dO.lastChild;
+    for(var q9=1;q9<=d9.numPages;q9++){row9.textContent='Leyendo '+f9.name+' \u00b7 p\u00e1gina '+q9+' de '+d9.numPages+'\u2026';
+     var pg9=await d9.getPage(q9);await pg9.getOperatorList();var sg9=pdfSegs(pg9,await pg9.getTextContent(),1.2);if(sg9.length)any=true;
+     sh.push({name:'P\u00e1gina '+q9,rows:pageGrid(sg9)})}
+    row9.remove();
+    if(!any){msg(dO,f9.name+': no tiene texto seleccionable (puede ser un PDF escaneado). Excel necesita texto real.');continue}
+    addOut(dO,await buildXlsx(sh),base(f9)+'.xlsx')}
   }else{
    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
    for(var f5 of files){var d5=await pdfjsLib.getDocument({data:await f5.arrayBuffer()}).promise;

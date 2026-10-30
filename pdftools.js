@@ -54,7 +54,7 @@ async function pLoad(f){try{return await PDFLib.PDFDocument.load(await f.arrayBu
 async function pSave(d,o){return new Blob([await d.save(o||{})],{type:'application/pdf'})}
 pG.onclick=async function(){
  pO.innerHTML='';pG.disabled=true;var m=pmode();
- var big=pList.reduce(function(s,f){return s+f.size},0)>20971520||(m==='compress'&&val('p-clv')==='strong');
+ var big=pList.reduce(function(s,f){return s+f.size},0)>20971520||(m==='compress'&&val('p-clv')!=='light');
  if(big)gameOn(pO);
  try{
   msg(pO,'Preparando\u2026');var prep=pO.lastChild;await need('pdflib');var PL=PDFLib,PD=PL.PDFDocument,outs=[],notes=[];
@@ -115,7 +115,7 @@ pG.onclick=async function(){
      var b1=await pSave(src2,{useObjectStreams:true});
      if(b1.size>=orig*0.98)notes.push('La compresi\u00f3n ligera casi no reduce el peso de este PDF (menos de 2 %). Prueba el nivel fuerte.');
      else outs.push({b:b1,n:bn+'-comprimido.pdf',pct:pct(b1)})
-    }else{
+    }else if(val('p-clv')==='strong'){
      await need('pdfjs');pdfjsLib.GlobalWorkerOptions.workerSrc=PDFWORKER;
      var pd=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
      if(pd.numPages>60)throw new Error('La compresi\u00f3n fuerte admite hasta 60 p\u00e1ginas. Divide el PDF primero.');
@@ -131,6 +131,35 @@ pG.onclick=async function(){
      var b2=await pSave(dst2);
      if(b2.size>=orig*0.95)notes.push('El resultado no reduce el peso lo suficiente (menos de 5 %), por eso no se ofrece. Este PDF ya est\u00e1 optimizado.');
      else{outs.push({b:b2,n:bn+'-comprimido.pdf',pct:pct(b2)});notes.push('Con la compresi\u00f3n fuerte el texto del PDF ya no se puede seleccionar ni buscar.')}
+    }else{ /* peso maximo: t500, t1000, t2000, t5000 (KB decimales, asi cumple aunque el sitio cuente 1 KB = 1000 o 1024 bytes) */
+     var T=+val('p-clv').slice(1)*1000,TL=T>=1000000?(T/1000000)+' MB':(T/1000)+' KB';
+     if(orig<=T){notes.push('Tu PDF ya pesa '+fsize(orig)+', menos de '+TL+'. No hace falta comprimirlo.')}
+     else{
+      var bl=await pSave(src2,{useObjectStreams:true});
+      if(bl.size<=T){outs.push({b:bl,n:bn+'-'+TL.replace(' ','').toLowerCase()+'.pdf',pct:pct(bl)});notes.push('Se logr\u00f3 sin convertir las p\u00e1ginas en im\u00e1genes: el texto se conserva.')}
+      else{
+       await need('pdfjs');pdfjsLib.GlobalWorkerOptions.workerSrc=PDFWORKER;
+       var pt=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise,np2=pt.numPages;
+       if(np2>60)throw new Error('Para llegar a un peso m\u00e1ximo se admiten hasta 60 p\u00e1ginas. Divide el PDF primero.');
+       /* combinaciones de nitidez (escala sobre 144 ppp) y calidad JPG, de mejor a mas ligera */
+       var CB=[[1,.8],[1,.65],[.8,.65],[.8,.5],[.65,.5],[.65,.38],[.5,.4],[.42,.35],[.34,.3]],tot=CB.map(function(){return 0});
+       var rp=async function(q,fn){var pg=await pt.getPage(q),v=pg.getViewport({scale:1}),sc=Math.min(2,Math.sqrt(2600000/(v.width*v.height))),vp=pg.getViewport({scale:sc}),cv=document.createElement('canvas');
+        cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);var x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,cv.width,cv.height);await pg.render({canvasContext:x,viewport:vp}).promise;
+        await fn(cv,v);cv.width=cv.height=1};
+       var enc=async function(cv,k,ql){var c=cv;if(k<1){c=document.createElement('canvas');c.width=Math.max(1,Math.round(cv.width*k));c.height=Math.max(1,Math.round(cv.height*k));var x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(cv,0,0,c.width,c.height)}
+        var b=await new Promise(function(r){c.toBlob(r,'image/jpeg',ql)});if(c!==cv)c.width=c.height=1;return b};
+       for(var q3=1;q3<=np2;q3++){msg(pO,'Midiendo p\u00e1gina '+q3+' de '+np2+'\u2026');var r3=pO.lastChild;
+        await rp(q3,async function(cv){for(var j=0;j<CB.length;j++)tot[j]+=(await enc(cv,CB[j][0],CB[j][1])).size});r3.remove()}
+       var ci=CB.length-1;for(var j2=0;j2<CB.length;j2++){if(tot[j2]+np2*700+3000<=T*0.97){ci=j2;break}}
+       var bt=null;
+       for(;ci<CB.length;ci++){var dst3=await PD.create();
+        for(var q4=1;q4<=np2;q4++){msg(pO,'Comprimiendo p\u00e1gina '+q4+' de '+np2+'\u2026');var r4=pO.lastChild;
+         await rp(q4,async function(cv,v){var jb=await enc(cv,CB[ci][0],CB[ci][1]),im=await dst3.embedJpg(new Uint8Array(await jb.arrayBuffer())),pp=dst3.addPage([v.width,v.height]);pp.drawImage(im,{x:0,y:0,width:v.width,height:v.height})});r4.remove()}
+        bt=await pSave(dst3);if(bt.size<=T)break}
+       if(bt.size<=T){outs.push({b:bt,n:bn+'-'+TL.replace(' ','').toLowerCase()+'.pdf',pct:pct(bt)});notes.push('Listo: pesa '+fsize(bt.size)+', por debajo de '+TL+'. Para lograrlo las p\u00e1ginas se guardaron como im\u00e1genes, as\u00ed que el texto ya no se puede seleccionar. Revisa que se lea bien antes de enviarlo.')}
+       else{outs.push({b:bt,n:bn+'-lo-mas-ligero.pdf',pct:pct(bt)});notes.push('No se pudo bajar de '+TL+' sin que el texto se vuelva ilegible: lo m\u00e1s ligero posible pesa '+fsize(bt.size)+'. Prueba separar el PDF con \u00abDividir PDF\u00bb y enviar las partes por separado.')}
+      }
+     }
     }
    }
   }

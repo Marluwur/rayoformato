@@ -246,3 +246,20 @@ input[type=text]:focus,input[type=email]:focus,select:focus,textarea:focus{borde
 .dir li{margin:6px 0}
 .rel{display:block}
 @media(max-width:720px){.tico{width:48px;height:48px;border-radius:13px}.tico svg{width:28px;height:28px}.conv-h{gap:12px}}
+
+/* v9: medidas exactas, foto para visa y bloque para tramites */
+.row[hidden]{display:none}
+.row label.chk{display:flex;align-items:center;gap:8px;font-weight:500;align-self:center}
+.row label.chk input{width:18px;height:18px;margin:0}
+.crop.sq{border-radius:4px}
+.crop.sq i{position:absolute;pointer-events:none}
+.crop.sq .vg-head{left:22%;right:22%;top:8%;height:62%;border:2px dashed rgba(255,210,31,.95);box-shadow:0 0 0 1px rgba(20,23,28,.35);border-radius:50% 50% 46% 46%}
+.crop.sq .vg-eye{left:0;right:0;top:31%;height:13%;border-top:1.5px dashed rgba(20,23,28,.55);border-bottom:1.5px dashed rgba(20,23,28,.55);background:rgba(255,210,31,.22)}
+.crop.sq .vg-mid{top:0;bottom:0;left:50%;border-left:1px dashed rgba(20,23,28,.4)}
+#v-res{display:block;margin-top:14px;width:180px;height:180px;border-radius:8px;border:1px solid var(--line)}
+.tram{margin-top:8px}
+.tram h3 a{color:var(--ink);text-decoration:none;border-bottom:2px solid var(--accent)}
+.tram h3 a:hover{border-bottom-color:var(--ink)}
+.know h3{font-size:16px;margin:18px 0 6px}
+.know table{border-collapse:collapse;margin:4px 0 14px;font-size:15px;color:var(--mute)}
+.know th,.know td{border:1px solid var(--line);padding:6px 10px;text-align:left}
