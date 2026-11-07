@@ -1,0 +1,15 @@
+# Paginas unidas en la v10 (2 nov 2026): se redirigen de forma permanente a la pagina que las reune
+/jpg-a-pdf /imagenes-a-pdf 301
+/jpg-a-pdf.html /imagenes-a-pdf 301
+/png-a-pdf /imagenes-a-pdf 301
+/png-a-pdf.html /imagenes-a-pdf 301
+/pdf-a-imagenes /pdf-a-jpg 301
+/pdf-a-imagenes.html /pdf-a-jpg 301
+/mp4-a-mp3 /video-a-mp3 301
+/mp4-a-mp3.html /video-a-mp3 301
+/comprimir-pdf-a-1mb /comprimir-pdf 301
+/comprimir-pdf-a-1mb.html /comprimir-pdf 301
+/comprimir-pdf-a-2mb /comprimir-pdf 301
+/comprimir-pdf-a-2mb.html /comprimir-pdf 301
+/comprimir-imagen-a-100kb /comprimir-imagen 301
+/comprimir-imagen-a-100kb.html /comprimir-imagen 301

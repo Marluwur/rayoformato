@@ -55,6 +55,7 @@ go.onclick=async function(){
     else if(r.c!==c&&!warned){warned=true;msg(out,'Para llegar al peso pedido se redujeron las medidas de la imagen.')}}
    else b=await cBlob(c,type,0.92);
    if(!b)throw new Error(f.name+': no se pudo convertir.');
+   if(b.type&&b.type!==type){var e2={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[b.type]||'png';msg(out,'Tu navegador no puede crear im\u00e1genes '+ext.toUpperCase()+'; se guard\u00f3 en '+e2.toUpperCase()+'. Prueba con Chrome, Edge o Firefox.');name=name.replace(/\.[^.]+$/,'.'+e2)}
    put(name,b,extra)
   }catch(e){msg(out,e&&e.message&&e.message.indexOf(f.name)===0?e.message:(e&&e.message&&/píxeles/.test(e.message)?e.message:f.name+': formato no compatible.'))}
  }

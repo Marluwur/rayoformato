@@ -68,3 +68,8 @@ async function fitBlob(c,type,max,minQ,maxQ){
   n.width=Math.max(1,Math.round(cur.width*f));n.height=Math.max(1,Math.round(cur.height*f));
   var x=n.getContext('2d');if(type==='image/jpeg'){x.fillStyle='#fff';x.fillRect(0,0,n.width,n.height)}x.imageSmoothingQuality='high';x.drawImage(cur,0,0,n.width,n.height);cur=n}
  return last}
+
+/* v10: las descripciones de cada modo se muestran solo al pulsar "Mostrar mas" (evita texto oculto repetido en todas las paginas) */
+function modeDesc(){Array.prototype.forEach.call(document.querySelectorAll('.mode[data-s]'),function(l){if(l.querySelector('small'))return;var sp=l.querySelector('span');if(!sp)return;
+ [['Sirve para:',l.getAttribute('data-s')],['Se centra en:',l.getAttribute('data-c')]].forEach(function(d){var s=document.createElement('small'),m=document.createElement('em');m.textContent=d[0];s.appendChild(m);s.appendChild(document.createTextNode(' '+d[1]));sp.appendChild(s)})})}
+document.addEventListener('click',function(ev){if(ev.target&&ev.target.closest&&ev.target.closest('.more-btn'))modeDesc()},true);

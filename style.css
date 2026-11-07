@@ -263,3 +263,24 @@ input[type=text]:focus,input[type=email]:focus,select:focus,textarea:focus{borde
 .know h3{font-size:16px;margin:18px 0 6px}
 .know table{border-collapse:collapse;margin:4px 0 14px;font-size:15px;color:var(--mute)}
 .know th,.know td{border:1px solid var(--line);padding:6px 10px;text-align:left}
+
+/* v10: guias, Acerca de y enlace a guia relacionada */
+.gl{margin:14px 0 0;font-size:15px}
+.gl a{font-weight:600}
+.art{max-width:720px}
+.art .crumb{margin:0 0 6px;font-size:14px}
+.art .intro{font-size:18px;line-height:1.6;color:var(--ink)}
+.art h3{font-size:17px;margin:20px 0 6px}
+.art ul,.art ol{padding-left:22px;margin:8px 0 14px}
+.art li{margin:6px 0;line-height:1.55}
+.art table{border-collapse:collapse;margin:8px 0 16px;font-size:15px;width:100%}
+.art th,.art td{border:1px solid var(--line);padding:7px 10px;text-align:left}
+.art .note{border-left:4px solid var(--accent);padding:10px 14px;background:rgba(255,210,31,.12);border-radius:6px}
+.art .tools-box{margin-top:28px;padding:16px 18px;border:1px solid var(--line);border-radius:12px}
+.art .tools-box h2,.art .more-g h2{margin-top:0;font-size:18px}
+.art .more-g{margin-top:24px}
+.guides{list-style:none;padding:0;display:grid;gap:12px}
+.guides a{display:block;padding:16px 18px;border:1px solid var(--line);border-radius:12px;text-decoration:none;color:var(--ink)}
+.guides a:hover{border-color:var(--ink)}
+.guides b{display:block;font-size:17px;margin-bottom:4px}
+.guides span{color:var(--mute);font-size:15px;line-height:1.5}
