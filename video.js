@@ -12,7 +12,11 @@ function gifEnc(frames,w,h,delay){var o=[];function b(x){o.push(x&255)}function 
  b(0x21);b(0xFF);b(11);str('NETSCAPE2.0');b(3);b(1);s(0);b(0);
  frames.forEach(function(fr){b(0x21);b(0xF9);b(4);b(0);s(delay);b(0);b(0);b(0x2C);s(0);s(0);s(w);s(h);b(0);lzw(fr)});
  b(0x3B);return new Blob([new Uint8Array(o)],{type:'image/gif'})}
-async function vload(f){var v=document.createElement('video');v.src=URL.createObjectURL(f);v.muted=true;v.playsInline=true;await new Promise(function(r,j){v.onloadedmetadata=r;v.onerror=j});return v}
+async function vload(f){var v=document.createElement('video');v.src=URL.createObjectURL(f);v.muted=true;v.playsInline=true;await new Promise(function(r,j){v.onloadedmetadata=r;v.onerror=j});
+ /* v11: si el navegador solo puede leer el sonido (ProRes del iPhone, codecs poco comunes), no se entrega un video vacio */
+ if(!v.videoWidth){await new Promise(function(r){v.onloadeddata=r;setTimeout(r,2500)})}
+ if(!v.videoWidth)throw new Error('NOVIDEO');return v}
+var NOVIDEO=': tu navegador puede leer el sonido de este video, pero no la imagen. Suele pasar con videos grabados en ProRes en el iPhone o con códecs poco comunes. Para sacar solo el audio, usa «Extraer audio» arriba. Para convertir el video, en el iPhone graba con Ajustes > Cámara > Formatos > «Más compatible» (o desactiva Apple ProRes), o conviértelo en la computadora con un programa gratuito como HandBrake.';
 function seek(v,t){return new Promise(function(r){v.onseeked=r;v.currentTime=t})}
 async function toGif(v,st,du){st=Math.min(st,Math.max(0,v.duration-0.5));var dur=Math.min(du,v.duration-st),w=Math.min(480,v.videoWidth),h=Math.round(v.videoHeight*w/v.videoWidth),c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d',{willReadFrequently:true}),fr=[];
  for(var t=0;t<dur;t+=0.1){await seek(v,st+t+0.01);x.drawImage(v,0,0,w,h);var d=x.getImageData(0,0,w,h).data,p=new Uint8Array(w*h);for(var i=0,j=0;i<d.length;i+=4,j++)p[j]=Math.round(d[i]/51)*36+Math.round(d[i+1]/51)*6+Math.round(d[i+2]/51);fr.push(p)}
@@ -24,7 +28,7 @@ async function toMp4(v){var ctx=new (window.AudioContext||window.webkitAudioCont
  var done=new Promise(function(r){rec.onstop=r});rec.start();v.currentTime=0;await v.play();await new Promise(function(r){v.onended=r});rec.stop();await done;ctx.close();
  return {blob:new Blob(ch,{type:mt.split(';')[0]}),ext:mt.indexOf('mp4')>-1?'mp4':'webm'}}
 var vF=document.getElementById('v-file'),vM=document.getElementById('v-fmt'),vG=document.getElementById('v-go'),vO=document.getElementById('v-out');
-vF.onchange=function(){vG.disabled=!vF.files.length;ready(vO,vF.files);scan(vF.files[0])};
+vF.onchange=function(){vG.disabled=!vF.files.length;ready(vO,vF.files);scan(vF.files[0]);Array.from(vF.files).forEach(function(f){if(f.size>500*1024*1024)msg(vO,f.name+': pesa '+Math.round(f.size/1048576)+' MB. Con videos tan pesados la conversión puede tardar mucho o fallar en este navegador.')})};
 var vP=document.getElementById('v-prev'),vC=document.getElementById('v-clip'),vS=document.getElementById('v-s'),vD=document.getElementById('v-d'),vSt=document.getElementById('v-st'),vDu=document.getElementById('v-du'),strip=document.getElementById('v-strip'),sel=null;
 function fmtT(t){var m=Math.floor(t/60),s=Math.floor(t%60);return m+':'+(s<10?'0':'')+s}
 function upd(){var d=vP.duration||0,st=+vS.value,du=Math.min(+vD.value,Math.max(0.5,d-st));vSt.textContent=fmtT(st)+' – '+fmtT(st+du);vDu.textContent=String(Math.round(du*10)/10);if(sel&&d){sel.style.left=(st/d*100)+'%';sel.style.width=(du/d*100)+'%'}}
@@ -33,6 +37,7 @@ async function scan(f){
  if(!f||vM.value!=='gif')return;
  vP.src=URL.createObjectURL(f);
  try{await new Promise(function(r,j){vP.onloadedmetadata=r;vP.onerror=j})}catch(e){return}
+ if(!vP.videoWidth){await new Promise(function(r){vP.onloadeddata=r;setTimeout(r,2500)});if(!vP.videoWidth){vO.innerHTML='';msg(vO,f.name+NOVIDEO);return}}
  var d=vP.duration;vS.max=Math.max(0,d-0.5);vS.value=0;vD.max=Math.min(10,d);vD.value=Math.min(5,d);vC.hidden=false;
  var n=10,tv=document.createElement('video');tv.muted=true;tv.src=vP.src;await new Promise(function(r){tv.onloadedmetadata=r});
  for(var i=0;i<n;i++){var cv=document.createElement('canvas');cv.width=96;cv.height=54;strip.appendChild(cv);await seek(tv,(i+0.5)*d/n);cv.getContext('2d').drawImage(tv,0,0,96,54);(function(t){cv.onclick=function(){vS.value=Math.min(t,vS.max);vP.currentTime=+vS.value;upd()}})(i*d/n)}
@@ -45,6 +50,6 @@ vG.onclick=async function(){
   try{var v=await vload(f6),r=vM.value==='gif'?{blob:await toGif(v,+vS.value,+vD.value),ext:'gif'}:await toMp4(v);
    row.remove();addOut(vO,r.blob,base(f6)+'.'+r.ext,f6.size);
    if(r.ext==='webm')msg(vO,'Tu navegador no puede grabar MP4; se guardó como WebM.')}
-  catch(e){row.textContent=f6.name+': no se pudo procesar. Prueba con otro navegador o formato.'}
+  catch(e){row.textContent=f6.name+(e&&e.message==='NOVIDEO'?NOVIDEO:': no se pudo procesar. Prueba con otro navegador o formato.')}
  }
  gameOff();vG.disabled=false};
