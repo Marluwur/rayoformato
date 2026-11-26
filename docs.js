@@ -174,8 +174,10 @@ function buildDocx(blocks){
 /* Documentos: imágenes a PDF, TXT a PDF, PDF a imágenes */
 var dF=document.getElementById('d-file'),dM={get value(){return document.querySelector('input[name=dmode]:checked').value}},dG=document.getElementById('d-go'),dO=document.getElementById('d-out'),dH=document.getElementById('d-hint');
 var dInfo={img:['image/*','Imágenes JPG, PNG o WebP'],txt:['.txt,text/plain','Archivos de texto (.txt)'],pdf:['application/pdf','Archivo PDF (se convierten hasta 20 páginas)'],docx:['.docx','Documento de Word (.docx)'],xlsx:['.xlsx,.xls,.csv','Hoja de Excel (.xlsx, .xls o .csv)'],pdfdoc:['application/pdf','PDF con texto seleccionable (se conservan texto, t\u00edtulos, negritas e im\u00e1genes)'],ocr:['application/pdf','PDF escaneado o fotografiado (hasta 10 páginas)'],img2docx:['image/*','Imágenes JPG, PNG o WebP'],pdfjpg:['application/pdf','PDF (se convierten hasta 20 páginas)'],pdfxls:['application/pdf','PDF con texto seleccionable: cada página pasa a una hoja de Excel'],ocrdocx:['image/*','Foto o captura con texto (JPG, PNG o WebP)']};
+var dPer=null,dLite=null,dOpt=null;
+if(document.querySelector('input[name=dmode][value=img]')){dOpt=document.createElement('div');dOpt.className='imgopt';dOpt.innerHTML='<label>Imágenes por hoja<select id="d-per"><option value="1">1 por hoja</option><option value="2">2 por hoja (frente y reverso)</option></select></label><label class="chk"><input type="checkbox" id="d-lite"> Archivo ligero para trámites</label>';dG.parentNode.insertBefore(dOpt,dG);dPer=document.getElementById('d-per');dLite=document.getElementById('d-lite');dOpt.hidden=dM.value!=='img'}
 var mb=document.getElementById('d-more');mb.onclick=function(){var o=document.getElementById('d-modes').classList.toggle('more');mb.textContent=o?'Mostrar menos':'Mostrar más';mb.setAttribute('aria-expanded',o)};
-document.getElementById('d-modes').onchange=function(){var i=dInfo[dM.value];dF.accept=i[0];dH.textContent=i[1];dF.value='';dG.disabled=true;dO.innerHTML=''};
+document.getElementById('d-modes').onchange=function(){var i=dInfo[dM.value];if(dOpt)dOpt.hidden=dM.value!=='img';dF.accept=i[0];dH.textContent=i[1];dF.value='';dG.disabled=true;dO.innerHTML=''};
 dF.onchange=function(){dG.disabled=!dF.files.length;ready(dO,dF.files)};
 dG.onclick=async function(){
  dO.innerHTML='';dG.disabled=true;var files=Array.from(dF.files),m=dM.value;if(m==='ocr'||m==='ocrdocx'||m==='docx'||files.some(function(f){return f.size>20971520}))gameOn(dO);
@@ -185,10 +187,13 @@ dG.onclick=async function(){
   for(var ni=0;ni<NEED[m].length;ni++)await need(NEED[m][ni]);
   prep.remove();
   if(m==='img'){
-   var pdf=new jspdf.jsPDF({unit:'pt',format:'a4'}),W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight();
-   for(var k=0;k<files.length;k++){var im=await readImg(files[k]),c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0);
-    var r=Math.min((W-40)/c.width,(H-40)/c.height),w=c.width*r,h=c.height*r;if(k)pdf.addPage();pdf.addImage(c.toDataURL('image/jpeg',.92),'JPEG',(W-w)/2,(H-h)/2,w,h)}
+   /* v12: opcion de 2 imagenes por hoja (frente y reverso) y archivo ligero para tramites; por defecto, igual que antes */
+   var per=dPer&&dPer.value==='2'?2:1,lite=!!(dLite&&dLite.checked),mx=lite?(per===2?1400:1700):0,q=lite?0.8:0.92;
+   var pdf=new jspdf.jsPDF({unit:'pt',format:'a4'}),W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight(),cellH=per===2?(H-60)/2:H-40;
+   for(var k=0;k<files.length;k++){var im=await readImg(files[k]),sc=mx?Math.min(1,mx/Math.max(im.naturalWidth,im.naturalHeight)):1,c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*sc);c.height=Math.round(im.naturalHeight*sc);var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+    var r=Math.min((W-40)/c.width,cellH/c.height),w=c.width*r,h=c.height*r,slot=k%per,top=per===2?20+slot*(cellH+20)+(cellH-h)/2:(H-h)/2;if(k&&!slot)pdf.addPage();pdf.addImage(c.toDataURL('image/jpeg',q),'JPEG',(W-w)/2,top,w,h)}
    addOut(dO,pdf.output('blob'),(files.length>1?'imagenes':base(files[0]))+'.pdf');
+   if(per===2&&files.length%2)msg(dO,'Subiste un número impar de imágenes: la última hoja tiene solo una.');
   }else if(m==='txt'){
    for(var f of files){var t=await f.text(),p=new jspdf.jsPDF({unit:'pt',format:'a4'}),L=p.splitTextToSize(t,p.internal.pageSize.getWidth()-100),y=60;p.setFontSize(11);
     L.forEach(function(l){if(y>780){p.addPage();y=60}p.text(l,50,y);y+=15});addOut(dO,p.output('blob'),base(f)+'.pdf')}
